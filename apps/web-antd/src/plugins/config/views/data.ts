@@ -77,3 +77,7 @@ export const emailSchema: VbenFormSchema[] = [
     rules: 'required',
   },
 ];
+
+export const loginSchema: VbenFormSchema[] = [];
+
+export const userSecuritySchema: VbenFormSchema[] = [];
