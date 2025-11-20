@@ -232,6 +232,13 @@ export const cancelInstance = (instanceId: number) => {
   return ApiClient.post(`/v1/approval/instances/${instanceId}/cancel`);
 };
 
+/**
+ * 删除审批实例
+ */
+export const deleteInstance = (instanceId: number) => {
+  return ApiClient.delete(`/v1/approval/instances/${instanceId}`);
+};
+
 // ==================== 我的任务API ====================
 
 /**

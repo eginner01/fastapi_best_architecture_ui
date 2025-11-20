@@ -107,7 +107,7 @@ onMounted(() => {
   <Page content-class="flex flex-col" title="审批详情">
     <!-- 返回按钮 -->
     <div class="mb-4">
-      <a-button @click="router.push({ name: 'approval:initiated' })">
+      <a-button @click="router.push({ name: 'approval:initiated', query: { refresh: Date.now().toString() } })">
         <template #icon>
           <Icon icon="ant-design:arrow-left-outlined" />
         </template>

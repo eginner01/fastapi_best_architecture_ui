@@ -74,7 +74,7 @@ const handleSubmit = async () => {
     });
 
     message.success('审批已发起');
-    router.push({ name: 'approval:initiated' });
+    router.push({ name: 'approval:initiated', query: { refresh: Date.now().toString() } });
   } catch (error: any) {
     message.error(error.message || '发起失败');
   } finally {

@@ -393,7 +393,7 @@ export default function FlowDesignPage() {
       }
       
       console.log('[FlowDesign] 跳转到流程列表页');
-      navigate('/approval/flow-manage');
+      navigate('/approval/flow-manage', { state: { refresh: true, timestamp: Date.now() } });
     } catch (error: any) {
       toast({
         title: '保存失败',

@@ -156,7 +156,8 @@ export default function ProcessApprovalPage() {
         description: `审批已${actionText}`,
       });
 
-      navigate('/approval/todo');
+      // 跳转回待办列表，并触发刷新
+      navigate('/approval/todo', { state: { refresh: true, timestamp: Date.now() } });
     } catch (error: any) {
       console.error('[ProcessApproval] 处理失败:', error);
       toast({

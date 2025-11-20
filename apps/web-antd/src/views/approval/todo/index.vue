@@ -23,13 +23,10 @@ const columns = [
     dataIndex: 'instance_no',
     key: 'instance_no',
     width: 200,
-    customRender: ({ record }: any) => {
+    customCell: () => {
       return {
-        children: record.instance_no,
-        attrs: {
-          style: {
-            fontFamily: 'monospace',
-          },
+        style: {
+          fontFamily: 'monospace',
         },
       };
     },

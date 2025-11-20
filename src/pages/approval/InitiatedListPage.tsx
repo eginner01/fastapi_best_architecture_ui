@@ -3,8 +3,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Eye, X } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Eye, XCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -28,18 +28,21 @@ import {
 } from '@/components/ui/alert-dialog';
 import { PageContainer } from '@/components/PageContainer';
 import PageHeader from '@/components/PageHeader';
-import { getMyInitiated, cancelInstance } from '@/api/approval';
+import { getMyInitiated, cancelInstance, deleteInstance } from '@/api/approval';
 import type { Instance } from '@/api/approval';
 
 export default function InitiatedListPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedInstanceId, setSelectedInstanceId] = useState<number | null>(null);
+  const [selectedInstance, setSelectedInstance] = useState<Instance | null>(null);
 
   // 加载我发起的审批
   const loadInstances = async () => {
@@ -65,10 +68,23 @@ export default function InitiatedListPage() {
   };
 
   useEffect(() => {
+    console.log('[InitiatedList] 页面加载或page变化, page:', page);
     loadInstances();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  // 取消流程
+  // 监听路由状态，当从其他页面返回时自动刷新
+  useEffect(() => {
+    if (location.state?.refresh) {
+      console.log('[InitiatedList] 检测到刷新标志，时间戳:', location.state.timestamp);
+      loadInstances();
+      // 清除刷新标志
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.timestamp]);
+
+  // 取消流程（撤销）
   const handleCancel = async () => {
     if (!selectedInstanceId) return;
     
@@ -77,20 +93,47 @@ export default function InitiatedListPage() {
     try {
       await cancelInstance(selectedInstanceId);
       toast({
-        title: '取消成功',
-        description: '流程已取消，所有待办任务已同步撤销',
+        title: '撤销成功',
+        description: '流程已撤销，所有待办任务已同步取消',
       });
       loadInstances();
     } catch (error: any) {
-      console.error('[InitiatedList] 取消失败:', error);
+      console.error('[InitiatedList] 撤销失败:', error);
       toast({
-        title: '取消失败',
-        description: error.message || '取消流程失败',
+        title: '撤销失败',
+        description: error.message || '撤销流程失败',
         variant: 'destructive',
       });
     } finally {
       setCancelDialogOpen(false);
       setSelectedInstanceId(null);
+    }
+  };
+
+  // 删除流程
+  const handleDelete = async () => {
+    if (!selectedInstanceId) return;
+    
+    console.log('[InitiatedList] 删除流程, instanceId:', selectedInstanceId);
+    
+    try {
+      await deleteInstance(selectedInstanceId);
+      toast({
+        title: '删除成功',
+        description: '流程记录已删除',
+      });
+      loadInstances();
+    } catch (error: any) {
+      console.error('[InitiatedList] 删除失败:', error);
+      toast({
+        title: '删除失败',
+        description: error.message || '删除流程失败',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleteDialogOpen(false);
+      setSelectedInstanceId(null);
+      setSelectedInstance(null);
     }
   };
 
@@ -161,6 +204,7 @@ export default function InitiatedListPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate(`/approval/detail/${instance.id}`)}
+                        title="查看详情"
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -172,8 +216,25 @@ export default function InitiatedListPage() {
                             setSelectedInstanceId(instance.id);
                             setCancelDialogOpen(true);
                           }}
+                          title="撤销审批"
+                          className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                         >
-                          <X className="w-4 h-4 text-red-500" />
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {instance.status !== 'PENDING' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedInstanceId(instance.id);
+                            setSelectedInstance(instance);
+                            setDeleteDialogOpen(true);
+                          }}
+                          title="删除记录"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
                     </div>
@@ -210,18 +271,45 @@ export default function InitiatedListPage() {
         </div>
       )}
 
-      {/* 取消确认对话框 */}
+      {/* 撤销确认对话框 */}
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认取消</AlertDialogTitle>
+            <AlertDialogTitle>确认撤销</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要取消这个审批吗？此操作不可恢复。
+              确定要撤销这个审批吗？所有待办任务将被取消，此操作不可恢复。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCancel}>确定取消</AlertDialogAction>
+            <AlertDialogAction onClick={handleCancel} className="bg-orange-600 hover:bg-orange-700">
+              确定撤销
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 删除确认对话框 */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除这条审批记录吗？
+              {selectedInstance && (
+                <div className="mt-2 text-sm">
+                  <div>实例编号：{selectedInstance.instance_no}</div>
+                  <div>标题：{selectedInstance.title}</div>
+                  <div className="text-red-600 mt-2">此操作不可恢复！</div>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              确定删除
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

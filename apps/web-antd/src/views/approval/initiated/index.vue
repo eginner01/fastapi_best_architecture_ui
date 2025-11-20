@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { message, Modal } from 'ant-design-vue';
 import { Page } from '@vben/common-ui';
 import { Icon } from '@iconify/vue';
-import { getMyInitiated, cancelInstance } from '#/api/approval';
+import { getMyInitiated, cancelInstance, deleteInstance } from '#/api/approval';
 import type { ApprovalInstance } from '#/api/approval';
 import { formatDateTime, getUrgencyConfig, getInstanceStatusConfig } from '../utils/formatters';
 
 const router = useRouter();
+const route = useRoute();
 const loading = ref(false);
 const instances = ref<ApprovalInstance[]>([]);
 const pagination = ref({
@@ -88,21 +89,48 @@ const handleView = (instanceId: number) => {
   });
 };
 
-// 撤回审批
+// 撤销审批（仅对审批中状态）
 const handleCancel = (instance: ApprovalInstance) => {
   Modal.confirm({
-    title: '确认撤回',
-    content: `确定要撤回审批"${instance.title}"吗？此操作不可恢复。`,
-    okText: '确定撤回',
-    okType: 'danger',
+    title: '确认撤销',
+    content: `确定要撤销审批“${instance.title}”吗？所有待办任务将被取消，此操作不可恢复。`,
+    okText: '确定撤销',
+    okType: 'warning',
     cancelText: '取消',
     onOk: async () => {
       try {
         await cancelInstance(instance.id);
-        message.success('审批已撤回');
-        loadInstances();
+        message.success('审批已撤销');
+        // 通过路由参数触发刷新
+        router.push({ name: 'approval:initiated', query: { refresh: Date.now().toString() } });
       } catch (error: any) {
-        message.error(error.message || '撤回失败');
+        message.error(error.message || '撤销失败');
+      }
+    },
+  });
+};
+
+// 删除审批记录（仅对非审批中状态）
+const handleDelete = (instance: ApprovalInstance) => {
+  Modal.confirm({
+    title: '确认删除',
+    content: `确定要删除这条审批记录吗？
+
+实例编号：${instance.instance_no}
+标题：${instance.title}
+
+此操作不可恢复！`,
+    okText: '确定删除',
+    okType: 'danger',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        await deleteInstance(instance.id);
+        message.success('审批记录已删除');
+        // 通过路由参数触发刷新
+        router.push({ name: 'approval:initiated', query: { refresh: Date.now().toString() } });
+      } catch (error: any) {
+        message.error(error.message || '删除失败');
       }
     },
   });
@@ -118,6 +146,20 @@ const handleTableChange = (pag: any) => {
 onMounted(() => {
   loadInstances();
 });
+
+// 监听路由查询参数变化，支持刷新
+watch(
+  () => route.query.refresh,
+  (newVal) => {
+    if (newVal) {
+      console.log('[InitiatedList] 检测到刷新标志，重新加载');
+      loadInstances();
+      // 清除刷新参数
+      router.replace({ name: 'approval:initiated', query: {} });
+    }
+  },
+  { immediate: false }
+);
 </script>
 
 <template>
@@ -167,28 +209,45 @@ onMounted(() => {
         <!-- 操作列 -->
         <template v-else-if="column.key === 'action'">
           <a-space>
-            <a-button
-              size="small"
-              type="link"
-              @click="handleView(record.id)"
-            >
-              <template #icon>
-                <Icon icon="ant-design:eye-outlined" />
-              </template>
-              查看
-            </a-button>
-            <a-button
-              v-if="record.status === 'PENDING'"
-              size="small"
-              type="link"
-              danger
-              @click="handleCancel(record)"
-            >
-              <template #icon>
-                <Icon icon="ant-design:close-circle-outlined" />
-              </template>
-              撤回
-            </a-button>
+            <!-- 查看按钮 -->
+            <a-tooltip title="查看详情">
+              <a-button
+                size="small"
+                type="text"
+                @click="handleView(record.id)"
+              >
+                <template #icon>
+                  <Icon icon="ant-design:eye-outlined" class="text-blue-500" />
+                </template>
+              </a-button>
+            </a-tooltip>
+            
+            <!-- 撤销按钮（仅对审批中状态） -->
+            <a-tooltip v-if="record.status === 'PENDING'" title="撤销审批">
+              <a-button
+                size="small"
+                type="text"
+                @click="handleCancel(record)"
+              >
+                <template #icon>
+                  <Icon icon="ant-design:rollback-outlined" class="text-orange-500" />
+                </template>
+              </a-button>
+            </a-tooltip>
+            
+            <!-- 删除按钮（仅对非审批中状态） -->
+            <a-tooltip v-if="record.status !== 'PENDING'" title="删除记录">
+              <a-button
+                size="small"
+                type="text"
+                danger
+                @click="handleDelete(record)"
+              >
+                <template #icon>
+                  <Icon icon="ant-design:delete-outlined" class="text-red-500" />
+                </template>
+              </a-button>
+            </a-tooltip>
           </a-space>
         </template>
       </template>

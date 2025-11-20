@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, Eye, Edit, Trash2, Power, PowerOff, Play, Search, Filter, TrendingUp, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,7 @@ import type { Flow } from '@/api/approval';
 
 export default function FlowManagementPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const { toast } = useToast();
@@ -72,12 +73,23 @@ export default function FlowManagementPage() {
     }
   };
 
-  // 页面变化或组件挂载时加载数据
+  // 页面加载或 page 变化时加载数据
   useEffect(() => {
-    console.log('[FlowManagement] 页面变化或组件挂载，page:', page);
+    console.log('[FlowManagement] 页面加载或page变化, page:', page);
     loadFlows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  // 监听路由状态，当检测到刷新标志时重新加载
+  useEffect(() => {
+    if (location.state?.refresh) {
+      console.log('[FlowManagement] 检测到刷新标志，时间戳:', location.state.timestamp);
+      loadFlows();
+      // 清除刷新标志
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.timestamp]);
 
   // 搜索
   const handleSearch = () => {

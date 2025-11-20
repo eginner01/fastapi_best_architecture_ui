@@ -103,6 +103,13 @@ export async function cancelInstance(instanceId: number) {
   return requestClient.post(`/api/v1/approval/instances/${instanceId}/cancel`);
 }
 
+/**
+ * 删除流程实例
+ */
+export async function deleteInstance(instanceId: number) {
+  return requestClient.delete(`/api/v1/approval/instances/${instanceId}`);
+}
+
 // ==================== 审批步骤API ====================
 
 /**
