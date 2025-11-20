@@ -33,7 +33,17 @@
     "sysMenu": "User",
     "sysRole": "Role",
     "sysUser": "User",
-    "profile": "Profile"
+    "profile": "Profile",
+    "approval": "Approval",
+    "approvalFlowManage": "Flow Manage",
+    "approvalFlowDesign": "Flow Design",
+    "approvalFlowDetail": "Flow Detail",
+    "approvalStartList": "Start Application",
+    "approvalStart": "Start Approval",
+    "approvalTodo": "My Todo",
+    "approvalProcess": "Process",
+    "approvalInitiated": "My Initiated",
+    "approvalDetail": "Detail"
   },
   "monitor": {
     "redis": {

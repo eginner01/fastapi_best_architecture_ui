@@ -9,6 +9,7 @@ import { io, Socket } from 'socket.io-client';
 export const useWebSocketStore = defineStore('websocket', () => {
   const socket = ref<null | Socket>(null);
   const isConnected = ref(false);
+  const reconnectAttempts = ref(0);
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   const eventCleanupFunctions = ref<Function[]>([]);
 
@@ -51,7 +52,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
 
     try {
-      // console.log('正在初始化 WebSocket 连接...');
       // 创建 Socket 连接，携带认证信息
       socket.value = io(WS_URL, {
         ...WS_CONFIG,
@@ -65,7 +65,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
       registerCoreEvents();
       return true;
     } catch (error) {
-      console.error('WebSocket 初始化失败:', error);
+      console.error('WebSocket 连接失败:', error);
       return false;
     }
   };
@@ -76,44 +76,25 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const registerCoreEvents = () => {
     if (!socket.value) return;
 
-    const onConnect = () => {
+    socket.value.on('connect', () => {
       // console.log('WebSocket 连接成功');
       isConnected.value = true;
-    };
+      reconnectAttempts.value = 0;
+    });
 
-    const onConnectError = (error: Error) => {
+    socket.value.on('connect_error', (error) => {
       console.error('WebSocket 连接错误:', error);
-      isConnected.value = false;
       handleConnectionError();
-    };
-
-    const onDisconnect = (reason: string) => {
-      console.warn('WebSocket 已断开:', reason);
-      isConnected.value = false;
-    };
-
-    socket.value.on('connect', onConnect);
-    socket.value.on('connect_error', onConnectError);
-    socket.value.on('disconnect', onDisconnect);
-
-    // 监听 Manager 的重连事件
-    socket.value.io.on('reconnect_attempt', (attempt: number) => {
-      console.warn(
-        `WebSocket 重连尝试 ${attempt}/${WS_CONFIG.reconnectionAttempts}`,
-      );
     });
 
-    socket.value.io.on('reconnect_failed', () => {
-      console.error('WebSocket 重连失败，已达到最大重连次数');
+    socket.value.on('disconnect', (reason) => {
+      // console.log('WebSocket 已断开:', reason);
       isConnected.value = false;
-    });
 
-    // 保存核心事件到清理列表
-    eventCleanupFunctions.value.push(
-      () => socket.value?.off('connect', onConnect),
-      () => socket.value?.off('connect_error', onConnectError),
-      () => socket.value?.off('disconnect', onDisconnect),
-    );
+      if (reason !== 'io client disconnect') {
+        handleReconnection();
+      }
+    });
   };
 
   /**
@@ -127,18 +108,29 @@ export const useWebSocketStore = defineStore('websocket', () => {
   };
 
   /**
+   * 处理重连机制
+   */
+  const handleReconnection = () => {
+    if (reconnectAttempts.value >= WS_CONFIG.reconnectionAttempts) {
+      console.error('已达到最大重连次数，停止重连');
+      return;
+    }
+
+    reconnectAttempts.value++;
+    setTimeout(() => {
+      connect();
+    }, WS_CONFIG.reconnectionDelay);
+  };
+
+  /**
    * 发送消息
    * @param event 事件名称
    * @param data 发送的数据
    */
   const emit = (event: string, data?: any): boolean => {
-    if (!socket.value) {
-      console.warn('WebSocket 未初始化');
-      return false;
-    }
-
+    connect();
     try {
-      socket.value.emit(event, data);
+      socket.value?.emit(event, data);
       return true;
     } catch (error) {
       console.error('发送消息失败:', error);
@@ -152,12 +144,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
    * @param callback 回调函数
    */
   const on = (event: string, callback: (data: any) => void) => {
-    if (!socket.value) {
-      console.warn('WebSocket 未初始化');
-      return () => {};
-    }
+    connect();
 
-    socket.value.on(event, callback);
+    socket.value?.on(event, callback);
 
     // 保存清理函数
     const cleanup = () => {
@@ -174,10 +163,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
    * @param callback 可选，特定回调函数
    */
   const off = (event: string, callback?: any) => {
-    if (!socket.value) {
-      console.warn('WebSocket 未初始化');
-      return;
-    }
+    if (!socket.value) return;
 
     if (callback) {
       socket.value.off(event, callback);
@@ -209,8 +195,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
   // 连接状态计算属性
   const connectionStatus = computed(() => {
     if (!socket.value) return 'disconnected';
-    if (isConnected.value) return 'connected';
-    return socket.value.connected ? 'connected' : 'connecting';
+    return isConnected.value ? 'connected' : 'connecting';
   });
 
   function $reset() {

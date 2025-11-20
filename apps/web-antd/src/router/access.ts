@@ -21,6 +21,7 @@ async function generateAccess(options: GenerateMenuAndRoutesOptions) {
   };
 
   const layoutMap: ComponentRecordType = {
+    Layout: BasicLayout,
     BasicLayout,
     IFrameView,
   };

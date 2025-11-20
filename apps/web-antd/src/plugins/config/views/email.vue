@@ -28,11 +28,9 @@ const [Form, formApi] = useVbenForm({
 });
 
 const editButtonShow = ref<boolean>(true);
-const loading = ref<boolean>(false);
 
 const emailData = ref<ConfigResult[]>([]);
 const fetchConfigList = async () => {
-  loading.value = true;
   try {
     emailData.value = await getAllConfigApi({ type: 'EMAIL' });
     emailData.value.forEach((config: any) => {
@@ -53,8 +51,6 @@ const fetchConfigList = async () => {
     });
   } catch (error) {
     console.error(error);
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -85,45 +81,43 @@ defineExpose({
 </script>
 
 <template>
-  <a-spin :spinning="loading">
-    <div>
-      <Form />
-      <VbenButton
-        v-show="editButtonShow"
-        class="ml-1.5 mt-3"
-        @click="
-          () => {
-            editButtonShow = false;
-            formApi.setState({ commonConfig: { disabled: false } });
-          }
-        "
-      >
-        <MaterialSymbolsEdit class="mr-1" />
-        修改
-      </VbenButton>
-      <VbenButton
-        v-show="!editButtonShow"
-        class="ml-1.5 mt-3"
-        @click="saveEmailConfig"
-      >
-        <MaterialSymbolsEdit class="mr-1" />
-        保存
-      </VbenButton>
-      <VbenButton
-        v-show="!editButtonShow"
-        class="ml-5 mt-5"
-        variant="outline"
-        @click="
-          () => {
-            editButtonShow = true;
-            formApi.setState({ commonConfig: { disabled: true } });
-            fetchConfigList();
-          }
-        "
-      >
-        <MaterialSymbolsEdit class="mr-1" />
-        取消
-      </VbenButton>
-    </div>
-  </a-spin>
+  <div>
+    <Form />
+    <VbenButton
+      v-show="editButtonShow"
+      class="ml-1.5 mt-3"
+      @click="
+        () => {
+          editButtonShow = false;
+          formApi.setState({ commonConfig: { disabled: false } });
+        }
+      "
+    >
+      <MaterialSymbolsEdit class="mr-1" />
+      修改
+    </VbenButton>
+    <VbenButton
+      v-show="!editButtonShow"
+      class="ml-1.5 mt-3"
+      @click="saveEmailConfig"
+    >
+      <MaterialSymbolsEdit class="mr-1" />
+      保存
+    </VbenButton>
+    <VbenButton
+      v-show="!editButtonShow"
+      class="ml-5 mt-5"
+      variant="outline"
+      @click="
+        () => {
+          editButtonShow = true;
+          formApi.setState({ commonConfig: { disabled: true } });
+          fetchConfigList();
+        }
+      "
+    >
+      <MaterialSymbolsEdit class="mr-1" />
+      取消
+    </VbenButton>
+  </div>
 </template>

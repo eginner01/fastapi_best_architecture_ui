@@ -33,7 +33,17 @@
     "sysMenu": "菜单管理",
     "sysRole": "角色管理",
     "sysUser": "用户管理",
-    "profile": "个人中心"
+    "profile": "个人中心",
+    "approval": "审批流",
+    "approvalFlowManage": "流程管理",
+    "approvalFlowDesign": "流程设计",
+    "approvalFlowDetail": "流程详情",
+    "approvalStartList": "发起申请",
+    "approvalStart": "发起审批",
+    "approvalTodo": "我的待办",
+    "approvalProcess": "审批处理",
+    "approvalInitiated": "我发起的",
+    "approvalDetail": "审批详情"
   },
   "monitor": {
     "redis": {
